@@ -1,0 +1,985 @@
+openapi: 3.0.3
+info:
+  title: POS API
+  version: 1.0.0
+  description: |
+    REST API that powers the POS system so it can be consumed by a React SPA or any other client.
+    Every endpoint lives under the `/api/v1` prefix. Authenticate once with the login or register
+    endpoints and send the returned token in the `Authorization: Bearer <token>` header for every
+    protected route.
+servers:
+  - url: /api/v1
+    description: Main API entry point
+tags:
+  - name: Auth
+  - name: Products
+  - name: Customers
+  - name: Suppliers
+  - name: Cart
+  - name: Purchase Cart
+  - name: Orders
+  - name: Settings
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new staff member and receive an API token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Exchange credentials for an API token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '422':
+          description: Invalid credentials
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Return the authenticated user profile.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke the currently used token.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Token revoked
+  /products:
+    get:
+      tags: [Products]
+      summary: List products with optional filters.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Filter by name or barcode.
+        - in: query
+          name: status
+          schema:
+            type: boolean
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+            default: 15
+      responses:
+        '200':
+          description: Paginated list of products
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductCollection'
+    post:
+      tags: [Products]
+      summary: Create a product.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProductInput'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+  /products/{id}:
+    get:
+      tags: [Products]
+      summary: Show product details.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      responses:
+        '200':
+          description: Product
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+    put:
+      tags: [Products]
+      summary: Update a product.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProductInput'
+      responses:
+        '200':
+          description: Updated product
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+    delete:
+      tags: [Products]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      responses:
+        '200':
+          description: Product removed
+  /products/{id}/quantity:
+    patch:
+      tags: [Products]
+      summary: Quickly update the on-hand quantity.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantity:
+                  type: integer
+              required: [quantity]
+      responses:
+        '200':
+          description: Updated product
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+  /customers:
+    get:
+      tags: [Customers]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Filter by name, email or phone.
+      responses:
+        '200':
+          description: Customers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerCollection'
+    post:
+      tags: [Customers]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomerInput'
+      responses:
+        '201':
+          description: Created customer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+  /customers/{id}:
+    get:
+      tags: [Customers]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+      responses:
+        '200':
+          description: Customer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+    put:
+      tags: [Customers]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomerInput'
+      responses:
+        '200':
+          description: Updated customer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+    delete:
+      tags: [Customers]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+      responses:
+        '200':
+          description: Deleted customer
+  /suppliers:
+    get:
+      tags: [Suppliers]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Suppliers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierCollection'
+    post:
+      tags: [Suppliers]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SupplierInput'
+      responses:
+        '201':
+          description: Created supplier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+  /suppliers/{id}:
+    get:
+      tags: [Suppliers]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SupplierId'
+      responses:
+        '200':
+          description: Supplier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+    put:
+      tags: [Suppliers]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SupplierId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SupplierInput'
+      responses:
+        '200':
+          description: Updated supplier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+    delete:
+      tags: [Suppliers]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SupplierId'
+      responses:
+        '200':
+          description: Deleted supplier
+  /cart:
+    get:
+      tags: [Cart]
+      security:
+        - bearerAuth: []
+      summary: View the active sale cart for the authenticated user.
+      responses:
+        '200':
+          description: Cart content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartCollection'
+    post:
+      tags: [Cart]
+      security:
+        - bearerAuth: []
+      summary: Add an item by barcode or product id.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartAddRequest'
+      responses:
+        '201':
+          description: Updated cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartMutationResponse'
+    delete:
+      tags: [Cart]
+      security:
+        - bearerAuth: []
+      summary: Empty the cart.
+      responses:
+        '200':
+          description: Cart cleared
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartMutationResponse'
+  /cart/{productId}:
+    patch:
+      tags: [Cart]
+      security:
+        - bearerAuth: []
+      summary: Change quantity for a product line.
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantity:
+                  type: integer
+              required: [quantity]
+      responses:
+        '200':
+          description: Updated cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartMutationResponse'
+    delete:
+      tags: [Cart]
+      security:
+        - bearerAuth: []
+      summary: Remove a product from the cart.
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      responses:
+        '200':
+          description: Updated cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartMutationResponse'
+  /purchase-cart:
+    get:
+      tags: [Purchase Cart]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Purchase cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartCollection'
+    post:
+      tags: [Purchase Cart]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                product_id:
+                  type: integer
+                quantity:
+                  type: integer
+              required: [product_id, quantity]
+      responses:
+        '201':
+          description: Updated purchase cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartMutationResponse'
+    delete:
+      tags: [Purchase Cart]
+      security:
+        - bearerAuth: []
+      summary: Empty purchase cart.
+      responses:
+        '200':
+          description: Purchase cart cleared
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartMutationResponse'
+  /purchase-cart/{productId}:
+    patch:
+      tags: [Purchase Cart]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantity:
+                  type: integer
+              required: [quantity]
+      responses:
+        '200':
+          description: Updated purchase cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartMutationResponse'
+    delete:
+      tags: [Purchase Cart]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      responses:
+        '200':
+          description: Updated purchase cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartMutationResponse'
+  /orders:
+    get:
+      tags: [Orders]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: customer_id
+          schema:
+            type: integer
+        - in: query
+          name: start_date
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: end_date
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+            default: 15
+      responses:
+        '200':
+          description: Paginated orders with totals
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderCollection'
+    post:
+      tags: [Orders]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                customer_id:
+                  type: integer
+                  nullable: true
+                amount:
+                  type: number
+                  format: float
+              required: [amount]
+      responses:
+        '201':
+          description: Order created from the current cart
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  order:
+                    $ref: '#/components/schemas/Order'
+  /orders/{id}:
+    get:
+      tags: [Orders]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: Order detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+  /orders/{id}/payments:
+    post:
+      tags: [Orders]
+      security:
+        - bearerAuth: []
+      summary: Register an additional payment (for partial payments or settle balance).
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                  format: float
+              required: [amount]
+      responses:
+        '200':
+          description: Updated order with payments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  order:
+                    $ref: '#/components/schemas/Order'
+  /settings:
+    get:
+      tags: [Settings]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Settings map
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  settings:
+                    $ref: '#/components/schemas/Settings'
+    put:
+      tags: [Settings]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Settings'
+      responses:
+        '200':
+          description: Saved settings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  settings:
+                    $ref: '#/components/schemas/Settings'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Token
+  parameters:
+    ProductId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    CustomerId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    SupplierId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    OrderId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+    RegisterRequest:
+      type: object
+      required: [first_name, last_name, email, password, password_confirmation]
+      properties:
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        password_confirmation:
+          type: string
+          format: password
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+    ProductInput:
+      type: object
+      required: [name, barcode, price, quantity, status]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        image:
+          type: string
+          format: binary
+        barcode:
+          type: string
+        price:
+          type: number
+        quantity:
+          type: integer
+        status:
+          type: boolean
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        barcode:
+          type: string
+        price:
+          type: number
+        quantity:
+          type: integer
+        status:
+          type: boolean
+        image_url:
+          type: string
+          nullable: true
+    ProductCollection:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+    CustomerInput:
+      type: object
+      required: [first_name, last_name]
+      properties:
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        address:
+          type: string
+        avatar:
+          type: string
+          format: binary
+    Customer:
+      type: object
+      properties:
+        id:
+          type: integer
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+        avatar_url:
+          type: string
+          nullable: true
+    CustomerCollection:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Customer'
+    SupplierInput:
+      type: object
+      required: [first_name, last_name]
+      properties:
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+        avatar:
+          type: string
+          format: binary
+    Supplier:
+      type: object
+      properties:
+        id:
+          type: integer
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+        avatar_url:
+          type: string
+          nullable: true
+    SupplierCollection:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Supplier'
+    CartAddRequest:
+      type: object
+      properties:
+        barcode:
+          type: string
+        product_id:
+          type: integer
+      description: Provide either barcode or product_id.
+    CartItem:
+      type: object
+      properties:
+        product_id:
+          type: integer
+        name:
+          type: string
+        barcode:
+          type: string
+        price:
+          type: number
+        quantity:
+          type: integer
+        stock:
+          type: integer
+        subtotal:
+          type: number
+    CartCollection:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+    CartMutationResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        cart:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        customer:
+          type: object
+          nullable: true
+        user:
+          type: object
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Payment'
+        totals:
+          type: object
+          properties:
+            gross:
+              type: number
+            received:
+              type: number
+            balance:
+              type: number
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        product_id:
+          type: integer
+        quantity:
+          type: integer
+        price:
+          type: number
+    Payment:
+      type: object
+      properties:
+        id:
+          type: integer
+        amount:
+          type: number
+        user_id:
+          type: integer
+    OrderCollection:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+        meta:
+          type: object
+          properties:
+            gross:
+              type: number
+            received:
+              type: number
+            balance:
+              type: number
+    Settings:
+      type: object
+      properties:
+        app_name:
+          type: string
+        app_description:
+          type: string
+        currency_symbol:
+          type: string
+        warning_quantity:
+          type: integer
